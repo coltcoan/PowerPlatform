@@ -53,3 +53,10 @@ After configuring the solution, you can start using the MusicStoreDemo app. Here
    - Search customer records
    - Make orders
    - Generative AI summaries of customer purchases
+  
+## Images
+
+![Image 1](https://i.postimg.cc/MX2BZbm9/temp-Image-XSi-So8.avif)
+![Image 2](https://i.postimg.cc/Y24y9rxF/temp-Image-Ix-Ee-Ps.avif)
+![Image 3](https://i.postimg.cc/7Y0s3KdY/temp-Imageani9d5.avif)
+![Image 4](https://i.postimg.cc/G3ZgTWM5/temp-Image-H1-Vnr-C.avif)
