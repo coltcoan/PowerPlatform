@@ -40,6 +40,10 @@ Before deploying Copilot Navigator, ensure the following requirements are met:
   - URL for requesting **M365 Copilot Chat** licensing.
   - URL for requesting **Copilot Studio** licensing.
 
+### Data
+
+    - Import the CopilotProductList.csv file to the 'Copilot Products' Dataverse table to start with an initial list of products.
+
 ---
 
 ## 📦 Deployment Notes
