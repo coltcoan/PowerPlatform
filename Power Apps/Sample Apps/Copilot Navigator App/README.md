@@ -2,6 +2,11 @@
 
 Copilot Navigator is a Power Platform solution designed to help users discover and access the Microsoft Copilot tools they are licensed for. It provides a seamless interface to check licensing status and launch available Copilot products, or initiate access requests for those not yet provisioned.
 
+<img width="1039" height="585" alt="Image1" src="https://github.com/user-attachments/assets/025b6e0f-8d49-4d03-8a1c-652ba8d4ea04" />
+
+<img width="1038" height="585" alt="Image2" src="https://github.com/user-attachments/assets/64968a60-eaa4-475c-a489-241fdb3f22b5" />
+
+
 ---
 
 ## 🚀 Purpose
