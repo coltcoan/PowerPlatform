@@ -42,7 +42,7 @@ Before deploying Copilot Navigator, ensure the following requirements are met:
 
 ### Data
 
-    - Import the CopilotProductList.csv file to the 'Copilot Products' Dataverse table to start with an initial list of products.
+- Import the CopilotProductList.csv file to the 'Copilot Products' Dataverse table to start with an initial list of products.
 
 ---
 
