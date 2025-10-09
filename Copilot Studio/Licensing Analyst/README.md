@@ -44,6 +44,9 @@ The agent:
 - Logs all details in **Dataverse** (custom table: `LicenseRequests`)
 - Sends a **confirmation email** to the requester via the **Office 365 Outlook connector**
 
+![LicensingAnalystDemoGIF-ezgif com-optimize-2](https://github.com/user-attachments/assets/a6d67af7-9519-4f88-8897-41d27170fc56)
+
+
 **Screenshots:**
 <img width="938" height="606" alt="Screenshot 2025-10-09 at 3 42 06 AM" src="https://github.com/user-attachments/assets/35e9fe17-e4d4-48e0-ad3e-2e33a51be3a7" />
 <img width="701" height="591" alt="Screenshot 2025-10-09 at 3 13 03 AM" src="https://github.com/user-attachments/assets/50e05dd9-d70a-47f3-99af-b47276d5b798" />
