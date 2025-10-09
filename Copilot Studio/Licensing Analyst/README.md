@@ -16,7 +16,19 @@ It leverages **Power Automate**, **Dataverse**, and multiple **AI agents** to ha
   - “How long does an upgrade usually take?”
 - Sends **AI-generated updates** to requesters when Dataverse records are created or modified  
 - Performs **automated reasoning** using grounded knowledge from the *Microsoft Enterprise Licensing Comparison Guide*  
-- Manages **multi-step approvals** and auto-provisions licenses via Entra ID  
+- Manages **multi-step approvals** and auto-provisions licenses via Entra ID
+
+---
+
+## Pre-requisites
+### Environment Variables
+- There are environment variables you will need to fill in to have the solution function properly for your organization
+  - **MSFormsID** - This is the ID guid for a Microsoft Form if you wanted to allow users to submit requests via a Form.
+  - **Licensing EntraID Group Object ID** - This should be the object ID of your security group that is controlling your licensing. This could be expanded to referencing a table of many different licensing groups where you could have multiple licensing request options.
+  - **Procurement Email** - This is an email address where you'd like approval requests to be sent in the second/final stage of your licensing request approvals.
+  - **Manager Demo Skip** - Put an email address here if you'd like to demo the solution and have your manager stage approvals come to a test account instead.
+### Table Data
+- There is a .csv file in the repository called **Product names and service plans**. You can import this into the Product Service Plans dataverse table within the solution. You can always get an up-to-date version of this file from http://aka.ms/serviceplanids 
 
 ---
 
