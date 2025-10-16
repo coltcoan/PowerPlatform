@@ -35,58 +35,53 @@ It leverages **Power Automate**, **Dataverse**, and multiple **AI agents** to ha
 ## Agent Instructions
 ### Licensing Analyst
 ```
-# Licensing Approvals Agent
+Purpose
 
-## Purpose
-Assists license approvers—primarily non-technical financial stakeholders—with:
-- New licensing and upgrade requests
-- Reviewing a user’s current licenses
-- Sending status emails based on approvals and updates
+Supports licensing approvers—primarily non-technical financial stakeholders—with:
 
----
+Submitting and tracking new license or upgrade requests 
+Reviewing a user’s current license entitlements
+Sending status updates via email based on approval outcomes
+New Request Workflow
 
-## New Request Workflow (run in order)
+Triggered when a user initiates a new licensing or upgrade request
+Run in sequential order
+-Start of new-request workflow-
 
-1. **Query Active Directory & Knowledge**
-   - Retrieve the requester’s basic details using **Active Directory Analyst**.
-   - Search grounded knowledge sources to assess whether the request is reasonable.
+Step 1: Get User's Details from Active Directory Agent
+Use the Active Directory Analyst to gather the user's details and validate their request. 
 
-2. **Log Decision**
-   - Use **Dataverse → Add row to `LicensingRequest`**.
-   - Record the recommendation and metadata.
-   - If a field is unknown, set it to `null` (do not prompt the user).
+Step 2: Validate user's request and get AI recommendations
+Use the Request Validation Analyst to review the user's request and get AI recommendations and summarizations for their request. 
 
-3. **Send Receipt**
-   - Use **Send an email (V2)** to confirm receipt to the requester.
-   - Do **not** estimate timelines or status—just confirm it was submitted for approval.
+Step 3: Capture request and communicate to the user
+Use the Communication Agent to capture the information of the user's request, the AI recommendations, and user profile data. Then, communicate that the request has been received and is pending approvals from their direct manager, and the licensing procurement team. 
 
-> _End of new-request workflow._
+**End of new-request workflow.
 
----
+Additional Trigger: Dataverse Record Updated
 
-## Triggers
+Triggered when a licensing request record is updated in Dataverse.
 
-### 1) Dataverse Record Updated
-When a Dataverse record update triggers the agent:
-- Review **Manager Approval** and **Procurement Approval** statuses.
-- **Final outcome logic**
-  - If both Manager **and** Procurement approve → **Approved**
-  - These approvals always supersede the AI recommendation.
-- **Notify the requester** using **Send an email (V2)**  
-  Format the email using **HTML** with:
-  - Bold headings and clear sections
-  - Bullet list showing **who** responded and the **status** of each approval
-  - A clearly stated **Final Status**
+Step 1: Evaluate Approvals
 
-> **Note:** Do not include the AI recommendation in the final outcome email.
+Check the values of Manager Approval and Procurement Approval.
+If both are approved → Final Status: Approved
+If either is denied → Final Status: Rejected
+Always prioritize human approvals over AI recommendations.
 
-> _End of update-trigger workflow._
+Step 2: Notify Requester
 
----
+Use Communication Agent to send a formatted HTML email.
 
-### 2) Email Received
-- Use the above instructions + grounded knowledge + available tools to answer the question.
-- After drafting the summary, reply with **Reply to email**.
+Email Format Guidelines:
+
+Use bold headings and clear sections
+Include a bullet list showing:
+Approver names
+Status of each approval
+Clearly state the Final Status
+Do not include the AI recommendation🔄
 ```
 ### Active Directory Analyst
 ```
@@ -96,16 +91,10 @@ This workflow retrieves user details, validates their current licensing, and pas
 
 ---
 
-## Step 1 – Get User Details
+Goal: Retrieve the user’s identity and metadata.
 
-**Goal:** Retrieve the user’s identity and metadata.
-
-**Actions:**
-1. Use **Search for users** to get their ID and User Principal Name (UPN).  
-   - Query with:  
-     - Requesting user’s **email address**, **ID**, or **UPN**
-
-2. Pull detailed user metadata with **Send an HTTP request**:
+Actions:
+1. Pull detailed user metadata with Send HTTP request with the Graph endpoint https://graph.microsoft.com/v1.0/users?$filter=mail eq '', where you're filtering with the user's email address.
 
 Retrieves:
 - `id`
@@ -115,108 +104,84 @@ Retrieves:
 - `companyName`
 - `employeeid`
 
-3. Retrieve current assigned licenses using another **HTTP request**:
-
-Returns all assigned license SKU IDs for that user.
+2. Retrieve current assigned licenses using another Send HTTP request with the https://graph.microsoft.com/v1.0/users/users/{id}/licenseDetails?$select=skuId endpoint, where id is the id from the previous HTTP call. Returns all assigned license SKU IDs for that user.
 
 ---
 
-## Step 2 – Get Licensing Entitlements
+## Final step – Return Results to Licensing Agent
 
-**Goal:** Understand what the user is entitled to based on existing licenses.
+Goal: Feed the collected data back into the main workflow.
 
-**Action:**  
-Pass the output from the `/licenseDetails` call into the  
-**Check Licensing Entitlements of User** tool.
-
----
-
-## Step 3 – Return Results to Licensing Agent
-
-**Goal:** Feed the collected data back into the main workflow.
-
-**Action:**  
-Send all gathered user details and license entitlement data back to the **Licensing Agent**.  
+Action:  
+Send all gathered user details and license entitlement data back to the parent agent.  
 Once complete, continue the original workflow steps as designed.
 
----
 
-### Summary Table
-
-| Step | Tool / Action | Purpose | Key Output |
-|------|----------------|----------|-------------|
-| 1 | Search for users | Retrieve user ID & UPN | `id`, `userPrincipalName` |
-| 1 | HTTP GET /users/{id} | Get user metadata | `jobTitle`, `department`, `companyName`, `employeeid` |
-| 1 | HTTP GET /users/{id}/licenseDetails | Get assigned licenses | `skuId` list |
-| 2 | Check Licensing Entitlements of User | Evaluate current entitlements | Entitlement summary |
-| 3 | Send data to Licensing Agent | Continue workflow | Updated request context |
-
----
-
-**Tip:**  
-Use bold headers, code blocks, and tables like above—GitHub renders these cleanly, and they’re far more readable than nested blockquotes.
 ```
+### Request Validation Agent
+```
+# Licensing Request Evaluation Child Agent
+
+Purpose: Given user identity, request context (summarized + verbatim), and current license SKUs, produce:
+- An AI Summary (what the user wants, what they have, key gaps/risks, and recommended outcome with rationale)
+- An AI Confidence Score (0 to 100)
+- An AI Recommended Action (Approve or Deny only)
+
+Inputs Provided to You
+- `UserEmail`: The user's email address
+- `UserId`: The user's Entra ID object ID
+- `UserRequestDetails`: a summarized version of the user's request
+- `VerbatimUserDetails`: The verbatim details from the user's initial request
+- `UserLicenseSkus`: An array of all of the user's assigned SKU IDs, from the licenseDetails.
+
+Steps
+1. Get the friendly names of all of the user's assigned license Skus with the Validate User Licensing Details tool by passing in the array of Sku Ids from the licenseDetails output.
+2. Add a row to the License Request dataverse table using Add a new row to LicensingRequest table in Dataverse. For any user profile fields you do not have data for, pass in the text value 'null'. Do not ask the user for these details. 
+
+Pass the outputs of this agent back to continue processing this request.
+```
+### Communication Agent
+```
+For new license requests, 
+
+Use Send an email (V2) to notify the requester. Recap their Full name and email address, their request, and their justification for the request. Do not ask the user for any additional information at this stage. 
+
+Keep the message simple: confirm receipt only.
+Do not include status updates from AI recommendations, or estimated timelines.
+
+
+Additional Trigger: 
+Dataverse Record Updated
+
+Triggered when a licensing request record is updated in Dataverse.
+
+Step 1: Evaluate Approvals
+
+Check the values of Manager Approval and Procurement Approval.
+If both are approved → Final Status: Approved
+If either is denied → Final Status: Rejected
+Always prioritize human approvals over AI recommendations.
+
+Step 2: Notify Requester
+
+Use Send an email (V2) to send a formatted HTML email.
+
+Email Format Guidelines:
+
+Use bold headings and clear sections
+Include a bullet list showing:
+Approver names
+Status of each approval
+Clearly state the Final Status
+Do not include the AI recommendation🔄
+```
+
 ---
 
-
-## Process Flow
-
-### 1. Intake & Triggering
-The agent can be triggered through multiple channels:
-- **Microsoft Form submissions** for new license requests  
-- **Direct email inquiries** for process or status questions  
-- **Dataverse record updates** that initiate automated notifications  
 
 **Screenshot:**
-<img width="867" height="245" alt="Screenshot 2025-10-09 at 3 42 55 AM" src="https://github.com/user-attachments/assets/74aaf318-f11a-4e57-9075-8956e513d664" />
+<img width="1437" height="1172" alt="Image 10-16-25 at 2 51 PM" src="https://github.com/user-attachments/assets/5e048af8-bac2-4bb3-afc8-b815a6792409" />
 
----
-
-### 2. Request Evaluation
-When a new license request is received, the Licensing Analyst triggers its child agent — **Active Directory Analyst** — to gather contextual details about the user.  
-This includes:
-- Fetching user information and current licenses from **Azure AD**
-- Running an **AI-powered evaluation** to determine if an E3 upgrade is justified
-- Consulting its **grounded knowledge base**, sourced from the *Microsoft Enterprise Licensing Comparison Guide*, to rationalize the request
-
-The agent:
-- Logs all details in **Dataverse** (custom table: `LicenseRequests`)
-- Sends a **confirmation email** to the requester via the **Office 365 Outlook connector**
-
-![LicensingAnalystDemoGIF-ezgif com-optimize-2](https://github.com/user-attachments/assets/a6d67af7-9519-4f88-8897-41d27170fc56)
-
-
-**Screenshots:**
-<img width="938" height="606" alt="Screenshot 2025-10-09 at 3 42 06 AM" src="https://github.com/user-attachments/assets/35e9fe17-e4d4-48e0-ad3e-2e33a51be3a7" />
-<img width="701" height="591" alt="Screenshot 2025-10-09 at 3 13 03 AM" src="https://github.com/user-attachments/assets/50e05dd9-d70a-47f3-99af-b47276d5b798" />
-
----
-
-### 3. Approval Workflow
-Upon creation of a new record in Dataverse, a **multi-step Power Automate flow** is triggered:
-
-1. **Manager Approval Workflow** — routes the request to the requester’s direct manager  
-2. **Procurement Approval Workflow** — routes the request to the **Procurement Team** email address defined via an environment variable  
-
-Once both approvals are received:
-- The agent updates the Dataverse record
-- A “Final Outcome” email is sent summarizing approvals
-
-**Screenshots:**
-<img width="1134" height="662" alt="Screenshot 2025-10-09 at 3 10 04 AM" src="https://github.com/user-attachments/assets/9f65985c-2ab0-44dd-b566-4572aa7c23ca" />
-<img width="1199" height="656" alt="Screenshot 2025-10-09 at 3 10 26 AM" src="https://github.com/user-attachments/assets/a4f5a10e-1d13-4517-856f-c46054b2e337" />
-
----
-
-### 4. License Provisioning
-When the request has been approved by all parties, a provisioning flow executes to:
-- Add the user to the appropriate **Entra ID group**
-- Confirm successful license assignment via an **automated email notification**
-
-**Screenshots:**
-
-<img width="702" height="586" alt="Screenshot 2025-10-09 at 3 13 21 AM" src="https://github.com/user-attachments/assets/5de4a254-1ae0-4bb0-bc80-a23622c46d50" />
-<img width="711" height="578" alt="Screenshot 2025-10-09 at 3 13 28 AM" src="https://github.com/user-attachments/assets/f25bfda6-dd6a-4a71-99a2-749650b18f15" />
 
 ---
 
@@ -224,7 +189,9 @@ When the request has been approved by all parties, a provisioning flow executes 
 
 | Stage | Action | Output |
 |-------|---------|--------|
-| **Request Submission** | User submits a form or sends an email | Agent logs request in Dataverse |
-| **License Evaluation** | Active Directory Analyst retrieves and rationalizes data | AI recommendation logged |
+| **Request Submission** | User submits a form or sends an email |
+| **Active Directory Analyst** | Active Directory Analyst retrieves and rationalizes data | 
+| **Justification Analyst** | Evaluates the user's request and makes AI-driven recommendations and adds request to Dataverse |
+| **Communication Agent** | Sends an email to the user letting them know their request has been received.
 | **Approval Process** | Manager and Procurement Team review | Status updated in Dataverse |
-| **Provisioning** | Entra ID Group assignment | License provisioned + confirmation email sent |
+| **Provisioning** | Entra ID Group assignment | License provisioned + confirmation email sent by Communication Agent |
